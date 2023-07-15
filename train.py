@@ -37,11 +37,9 @@ seed_everything(seed)
 batch_size = args.batch_size
 epochs = args.epoch
 lr = args.lr
-TEST = args.test
 output_name = args.output
 
 gamma = 0.7
-
 
 # Set dataLoader
 image_size = 224
