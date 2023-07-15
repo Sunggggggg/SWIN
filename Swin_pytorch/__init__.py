@@ -1,0 +1,1 @@
+from Swin_pytorch.swin_transformer import SwinTransformer
