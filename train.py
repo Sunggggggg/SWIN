@@ -23,8 +23,7 @@ def parse_option():
     parser.add_argument('--batch_size', type=int, help="batch size for single GPU")
     parser.add_argument('--epoch', type=int, help="training epoches")
     parser.add_argument('--lr', type=float, help="learning rate")
-    parser.add_argument('--test', type=bool, help="Run testdataset and eval")
-    parser.add_argument('--type', type = str, help = "model type (Original / Custom)")
+    parser.add_argument('--output', type=str, help="Run testdataset and eval")
     parser.add_argument('--resume', help='resume from checkpoint')
 
     args, unparsed = parser.parse_known_args()
@@ -32,12 +31,17 @@ def parse_option():
 # Set Hyperparameters
 args = parse_option()
 
+seed = 42
+seed_everything(seed)
+
 batch_size = args.batch_size
 epochs = args.epoch
 lr = args.lr
 TEST = args.test
+output_name = args.output
+
 gamma = 0.7
-seed = 42
+
 
 # Set dataLoader
 image_size = 224
@@ -46,21 +50,22 @@ train_loader, valid_loader, test_loader = create_dataLoader('./dataset/train', '
 # Set model
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-model = SwinTransformer(
-    hidden_dim=96,
-    layers=(2, 2, 6, 2),
-    heads=(3, 6, 12, 24),
-    channels=3,
-    num_classes=2,
-    head_dim=32,
-    window_size=7,
-    downscaling_factors=(4, 2, 2, 2),
-    relative_pos_embedding=True
-).to(device)
-
-# train
-seed_everything(seed)
-
+model = SwinTransformer(img_size = 224,
+                        patch_size = 4,
+                        in_chans = 3,
+                        num_classes = 2,
+                        embed_dim = 96,
+                        depths = [2, 2, 6, 2],
+                        num_heads = [3, 6, 12, 24],
+                        window_size = 7,
+                        mlp_ratio=4., 
+                        qkv_bias=True, 
+                        qk_scale=None,
+                        drop_rate=0., 
+                        attn_drop_rate=0., 
+                        drop_path_rate=0.1,
+                        norm_layer=nn.LayerNorm
+                        ).to(device)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -74,7 +79,7 @@ for epoch in range(epochs):
         data = data.to(device)
         label = label.to(device)
 
-        output = model(data)
+        output, _ = model(data)
         loss = criterion(output, label)
 
         optimizer.zero_grad()
@@ -92,7 +97,7 @@ for epoch in range(epochs):
             data = data.to(device)
             label = label.to(device)
 
-            val_output = model(data)
+            val_output, _ = model(data)
             val_loss = criterion(val_output, label)
 
             acc = (val_output.argmax(dim=1) == label).float().mean()
@@ -104,7 +109,7 @@ for epoch in range(epochs):
     )
 
     if (epoch + 1) % 10 == 0 :
-        torch.save(model, f'./Model_weight/SWIN_{epoch + 1}.pth')
+        torch.save(model, f'./Model_weight/SWIN_{output_name}_{epoch + 1}.pth')
 
 # 
 torch.save(model, f'./Model_weight/final_model.pth')
